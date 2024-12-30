@@ -1,0 +1,149 @@
+abstract class IntList {
+  static final IntList EMPTY = new EmptyIntList();
+  ConsIntList cons(int n) { return new ConsIntList(n, this); }
+  
+  /**
+   boolean contains(int key) returns true if key is in the list, false otherwise
+   */
+  abstract boolean contains(int key);
+  
+  /**
+   int length() computes the length of the list
+   */
+  abstract int length();
+  
+  /**
+   int sum() computes the sum of the elements in the list 
+   */
+  abstract int sum();
+  
+  /**
+   double average() computes the average of the elements in the list; returns 0 if the list is empty
+   */
+  abstract double average();
+  
+  /**
+   IntList notGreaterThan(int bound) returns a list of elements in this list that are less or equal to bound 
+   */
+  abstract IntList notGreaterThan(int bound);
+  
+  /**
+   IntList remove(int key) returns a list of all elements in this list that are not equal to key 
+   */
+  abstract IntList remove(int key);
+  
+  /**
+    IntList subst(int oldN, int newN) returns a list of all elements in this list with oldN replaced by newN 
+   */
+  abstract IntList subst(int oldN, int newN);
+  
+  /**
+     IntList mergeHelp(ConsIntList other) merges this list with the input list other, assuming that this list and other are sorted in ascending order.
+     Other list is not empty
+   */
+  abstract IntList mergeHelp(ConsIntList other);
+  
+  /**
+     IntList merge(IntList other) merges this list with the input list other, assuming that this list and other are sorted in ascending order.
+     Other list can be empty
+   */
+  IntList merge(IntList other) {
+    if (this instanceof EmptyIntList) {
+      return other;
+    }
+    if (other instanceof EmptyIntList) {
+      return this;
+    }
+    return this.mergeHelp((ConsIntList) other);
+  }
+
+}
+
+class EmptyIntList extends IntList {
+
+  boolean contains(int key) {
+    return false;
+  }
+  
+  int length() {
+    return 0;
+  }
+  
+  int sum() {
+    return 0;
+  }
+  
+  double average() {
+    return 0;
+  }
+  
+  IntList notGreaterThan(int bound) {
+    return this;
+  }
+  
+  IntList remove(int key) {
+    return this;
+  }
+  
+  IntList subst(int oldN, int newN) {
+    return this;
+  }
+  
+  IntList mergeHelp(ConsIntList other) {
+    return other;
+  }
+
+}
+
+class ConsIntList extends IntList {
+  int first;
+  IntList rest;
+  
+  boolean contains(int key) {
+    if (first == key) {
+      return true;
+    }
+    return rest.contains(key);
+  }
+  
+  int length() {
+    return 1 + rest.length();
+  }
+  
+  int sum() {
+    return first + rest.sum();
+  }
+  
+  double average() {
+    return sum() / length();
+  }
+  
+  IntList notGreaterThan(int bound) {
+    if (first <= bound) {
+      return new ConsIntList(first, rest.notGreaterThan(bound));
+    }
+    return rest.notGreaterThan(bound);
+  }
+  
+  IntList remove(int key) {
+    if (first == key) {
+      return rest.remove(key);
+    }
+    return new ConsIntList(first, rest.remove(key));
+  }
+  
+  IntList subst(int oldN, int newN) {
+    if (first == oldN) {
+      return new ConsIntList(newN, rest.subst(oldN, newN));
+    }
+    return new ConsIntList(first, rest.subst(oldN, newN));
+  }
+  
+  IntList mergeHelp(ConsIntList other) {
+    if (first < other.first) {
+     return new ConsIntList(first, rest.mergeHelp(other));
+    }
+    return new ConsIntList(other.first, other.rest.mergeHelp(this));
+  }
+
+}

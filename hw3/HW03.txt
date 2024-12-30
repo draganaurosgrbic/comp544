@@ -1,0 +1,217 @@
+Notes: 1. The preceding is a longer example than I will assign as a homework problem.
+       2. Comments are not graded; none are necessary.
+	   
+Guidance:
+       1. Each "line" of this trace is updated snapshot of the entire program.  The ... ellipsis
+		  at the head of each line stands for the program defining the count function.
+	   2. The notation
+	        (define (fnName v1 ... vn) ...) 
+		  abbreviates the longer form
+		    (define fnName (lambda (v1 ... vn) ...))
+		  The abbreviated form is convenient for writing programs; the longer form yields simpler 
+		  syntax for our evaluation (reduction) rules.  The expression "(lambda (v1 ... vn) ...) is
+		  called a lambda-abstraction.  All program-defined functions have this form.
+	   3. If a name like "count" is bound to a function "(lambda (v1 ... vn) ...)", then replacing 
+	      "count" by the instantiated body of its definition "(lambda (v1 ... vn) ...)" is an atomic
+		  reduction step.  Do not skip it!  The following reduction step is WRONG:
+		  
+		     ... (count (list 1 2)) 
+		  => ... (cond [(empty? (list 1 2)) 0] [(cons? (list 1 2)) (add1 (count (rest (list 1 2))))])
+
+		  because it collapses two reductions into one.  Look at the first two steps in the example
+		  above.  Nevertheless, in my experience, this mistake is very easy to make.  After I write out
+		  all of the steps in an evaluation, I go back to explicitly check for this error.  Regrettably,
+		  I often find such a mistake.
+	   4. The ordering of reductions is critical.  Always perform the leftmost reduction.  Function
+	      applications (of either primitive functions or lambda-abstractions) can only be reduced if
+		  all of the operands have been reduced to values.  Note that "cond", "if", "and", and "or"
+		  are special operations that are not considered "functions" because the rules for reducing
+		  applications of these primitive operations do not generally require that all operands are 
+		  values.  For example,
+		    (and false (/ 1 0)) => false
+			(if (zero? 1) (/ 1 0) true) => if false (/ 1 0) true)
+		  even though (/ 1 0) is not a value.
+	   5. If you set the DrRacket "Language" to "Intermediate Student with lambda", DrRacket has a stepper
+	      that shows each step in a reduction (without the ... ellipsis notation that makes writing out
+		  evaluations by hand tolerable).  You can use this tool to check your work.  Don't rely too heavily
+		  on the tool because (1) you will be required to perform such evaluations on exams where no such
+		  tool will be available, and (2) the stepper performs no ellipsis.  You should elide repeated 
+		  sub-expressions that are not involved in the next reduction step.
+
+
+Problem 0. Hand-evaluate the following Racket program showing each individual step:
+
+   (define count
+     (lambda (l) (cond [(empty? l) 0]
+                       [(cons? l) (add1 (count (rest l)))]))
+
+   (count (list 1 2))
+
+=> ...                                                                                      ;; ellipsis for the define
+   ((lambda (l) (cond [(empty? l) 0] [(cons? l) (add1 (count (rest l)))])) (list 1 2))      ;; count eval; collapsed into one line
+=> ...
+   (cond [(empty? (list 1 2)) 0] [(cons? (list 1 2)) (add1 (count (rest (list 1 2))))])     ;; beta-reduction
+=> ...   
+   (cond [false 0] [(cons? (list 1 2)) (add1 (count (rest (list 1 2))))])		    ;; (empty? ...) reduced
+=> ...  
+   (cond [(cons? (list 1 2)) (add1 (count (rest (list 1 2))))])	                            ;; cond false reduction
+=> ...
+   (cond [true (add1 (count (rest (list 1 2))))])					    ;; (cons? ...) reduced
+=> ...
+   (add1 (count (rest (list 1 2))))							    ;; cond true reduction 
+=> ...
+   (add1 ((lambda (l) (cond [(empty? l) 0] [(cons? l) (add1 (count (rest l))))]) (rest (list 1 2)))) ;; count eval
+=> ...
+   (add1 ((lambda (l) (cond [(empty? l) 0] [(cons? l) (add1 (count (rest l))))]) (list 2))) ;; rest eval; cond inside lambda
+=> ...
+   (add1 (cond [(empty? (list 1 2)) 0] [(cons? (list 1 2)) (add1 (count (rest (list 2)))))]);; beta-reduction
+=> ...
+   (add1 (cond [false 0] [(cons? (list 1 2)) (add1 (count (rest (list 2)))))])              ;; empty? eval
+=> ...
+   (add1 (cond [(cons? (list 1 2)) (add1 (count (rest (list 2)))))])                        ;; cond false reduction
+=> ...
+   (add1 (cond [true (add1 (count (rest (list 2)))))])                                      ;; cons? eval
+=> ...
+   (add1 (add1 (count (rest (list 2)))))                                                    ;; cond true reduction
+=> ...
+   (add1 (add1 ((lambda (l) (cond [(empty? l) 0] [(cons? l) (add1 (count (rest l)))])) (rest (list 2))))) ;; count eval
+=> ...
+   (add1 (add1 ((lambda (l) (cond [(empty? l) 0] [(cons? l) (add1 (count (rest l)))])) empty))) ;; rest eval;
+=> ...
+   (add1 (add1 (cond [(empty? empty) 0] [(cons? empty) (add1 (count (rest empty)))])))       ;; beta-reduction
+=> ...
+   (add1 (add1 (cond [true 0] [(cons? empty) (add1 (count (rest empty)))])))                 ;; empty? eval
+=> ...
+   (add1 (add1 0))                                                                           ;; cond true reduction
+=> ...
+   (add1 1)                                                                                  ;; add1 eval
+=> ...                                                       
+   2                                                                                         ;; add1 eval
+
+
+		  
+Problem 1. (20 pts.) Hand evaluate the following Racket program showing each individual step:
+
+   (or true (/ 1 0)) 
+
+=> ...
+   true
+
+Problem 2. (20 pts)  Hand evaluate the following Racket program showing each individual step:
+
+   (define AND (lambda (x y) (if x y false)))
+   (AND false (/ 1 0))
+
+=> ...
+   ((lambda (x y) (if x y false)) false (/ 1 0))
+=> ...
+   Error: division by zero
+
+
+Problem 3. (20 pts)  Hand evaluate the following Racket program showing each individual step:
+
+   (define OR (lambda (x y) (if x true y)))
+   (define contains? (lambda (x l) (if (empty? l) false (OR (equal? x (first l)) (contains? x (rest l)))))) 
+   (contains? 1 (cons 1 empty))
+
+=> ...
+   ((lambda (x l) (if (empty? l) false (OR (equal? x (first l)) (contains? x (rest l))))) 1 (cons 1 empty))
+=> ...
+   (if (empty? (cons 1 empty)) false (OR (equal? 1 (first (cons 1 empty))) (contains? 1 (rest (cons 1 empty)))))
+=> ...
+   (if false false (OR (equal? 1 (first (cons 1 empty))) (contains? 1 (rest (cons 1 empty)))))
+=> ...
+   (OR (equal? 1 (first (cons 1 empty))) (contains? 1 (rest (cons 1 empty))))
+=> ...
+   ((lambda (x y) (if x true y))          (equal? 1 (first (cons 1 empty)))          (contains? 1 (rest (cons 1 empty)))          )
+=> ...
+   ((lambda (x y) (if x true y))         (equal? 1 1)         (contains? 1 (rest (cons 1 empty)))         )
+=> ...
+   ((lambda (x y) (if x true y))         true      (contains? 1 (rest (cons 1 empty)))         )
+=> ...
+   ((lambda (x y) (if x true y))         true      ((lambda (x l) (if (empty? l) false (OR (equal? x (first l)) (contains? x (rest l))))) 1 (rest (cons 1 empty)))         )
+=> ...
+   ((lambda (x y) (if x true y))         true      ((lambda (x l) (if (empty? l) false (OR (equal? x (first l)) (contains? x (rest l))))) 1 empty)         )
+=> ...
+   ((lambda (x y) (if x true y))         true      (if (empty? empty) false (OR (equal? 1 (first empty)) (contains? 1 (rest empty))))         )
+=> ...
+   ((lambda (x y) (if x true y))         true      (if true false (OR (equal? 1 (first empty)) (contains? 1 (rest empty))))         )
+=> ...
+   ((lambda (x y) (if x true y))         true      false         )
+=> ...
+   (if true true false)
+=> ...
+   true
+
+
+
+   
+Problem 4. (20 pts)  Hand evaluate the following Racket program showing each individual step:
+
+   (define comp (lambda (f g) (lambda (x) (f (g x))))) ;; comp is short for compose
+   ((comp first rest) (list 1 2 3))
+
+=> ...
+   (((lambda (f g) (lambda (x) (f (g x)))) first rest) (list 1 2 3))
+=> ...
+   ((lambda (x) (first (rest x))) (list 1 2 3))
+=> ...
+   (first (rest (list 1 2 3)))
+=> ...
+   (first (list 2 3))
+=> ...
+   2
+
+
+Problem 5. (20 pts)  Hand evaluate the following Racket program using our evaluation rules:
+
+   ;; g: (number -> number)
+   (define g add1)                                                                                ;; [1]
+   (((lambda (f) ((lambda (g) (lambda (x) (g (f x)))) (lambda (x) x))) (lambda (y) (g (g y)))) 0) ;; [2]
+
+=> ...
+   (((lambda (g) (lambda (x) (g ((lambda (y) (g (g y))) x)))) (lambda (x) x)) 0)
+
+=> ...
+   ((lambda (x) ((lambda (x) x) ((lambda (y) (g (g y))) x))) 0)
+
+=> ...
+   ((lambda (x) x) ((lambda (y) (g (g y))) 0))
+
+=> ...
+   ((lambda (x) x) (g (g 0)))
+
+=> ...
+   ((lambda (x) x) (add1 (g 0)))
+
+=> ...
+   ((lambda (x) x) (add1 (add1 0)))
+
+=> ...
+   ((lambda (x) x) (add1 1))
+
+=> ...
+   ((lambda (x) x) 2)
+
+=> ...
+   2
+
+
+
+   ;; Comments:
+   ;; In your hand evaluation, ignore he comments at the end of the first two lines of the program text, just
+   ;; as you ignore the type information comment preceding the code.
+   ;; Racket/Scheme lambda-notation has a simple reduction semantics but it is hard for humans to read it as computer code.
+   ;; The first line [1] of the program simply binds the name g to the primitive function add1, so top-level g is a synonym for add1.
+   ;; The second line [2] of the program
+   ;; (a) binds the name f to the value (lambda (y) (g (g y))) which contains free variable g; the first reduction step replaces f by this value.  
+   ;;     What does g mean before the substitution? After?  Are the two meanings the same?  They should be.  How does safe substitution preserve 
+   ;;     the meaning of g within the the transformed text for (lambda (g) ...)?  The DrRacket stepper does no renaming and shows an incorrect 
+   ;;     program snapshot at this point. 
+   ;; (b) binds local g (the binding occurrence shown on line 2) to the identity function.  What is the name now of local g?  You chose a new one 
+   ;;     in the safe subsitution for f, right?  The DrRacket stepper did no renaming creating a grievous error but subsequently performs an incorrect 
+   ;;     beta-reduction to fix the mistake (do two wrongs make a right?). The reduction makes a name distinction not shown in the program text.  Ugh!  
+   ;; (c) reduces the substituted body of this lambda, but what does this body look like?  local g has been replaced by the identity function. 
+   ;;     What expression has replaced f?
+   ;; The remaining evaluation is straightforward.
+   

@@ -1,0 +1,153 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname HW04-01) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+(define-struct sum (left right))
+(define-struct prod (left right))
+(define-struct diff (left right))
+(define-struct quot (left right))
+
+;; A (ArithExpr alpha) is either:
+;; a number n,
+;; a sum (make-sum ae1 ae2) where ae1 and ae2 are ArithExpr,
+;; a product (make-prod ae1 ae2) where ae1 and ae2 are ArithExpr,
+;; a difference (make-diff ae1 ae2) where ae1 and ae2 are ArithExpr, or
+;; a quotient (make-quot ae1 ae2) where ae1 and ae2 are ArithExpr.
+
+;; Generic Template for any function f with primary argument alpha of type ArithExpr
+
+#|
+(define (f alpha)
+  (cond
+    [(number? alpha) ...]
+    [(sum? alpha) (... (f ... (sum-left exp) ... (sum-right exp) ...))]
+    [(prod? alpha) (... (f ... (prod-left exp) ... (prod-right exp) ...))]
+    [(diff? alpha) (... (f ... (diff-left exp) ... (diff-right exp) ...))]
+    [(quot? alpha) (... (f ... (quot-left exp) ... (quot-right exp) ...))]
+    [else alpha]
+    )
+  )
+|#
+
+
+
+;; to-list: ArithExpr -> RacketExpr, which is a list of number, symbol '+, symbol '-, symbol '*, symbol '/, or list of RacketExpr
+;; Contract: (to-list exp) maps exp to the corresponding list representation in Racket. Numbers stay unchanged, other expression are convert properly.
+;; Examples:
+;; (check-expect (to-list 0) 0)
+;; (check-expect (to-list 1) 1)
+;; (check-expect (to-list 12) 12)
+;; (check-expect (to-list (make-sum 3 8)) (list '+ 3 8))
+;; (check-expect (to-list (make-prod 3 8)) (list '* 3 8))
+;; (check-expect (to-list (make-diff 3 8)) (list '- 3 8))
+;; (check-expect (to-list (make-quot 3 8)) (list '/ 3 8))
+;; (check-expect (to-list (make-sum (make-prod 4 7) 25)) (list '+ (list '* 4 7) 25))
+;; (check-expect (to-list (make-quot (make-diff 4 7) 25)) (list '/ (list '- 4 7) 25))
+;; (check-expect (to-list (make-sum (make-prod (make-quot 3 8) 8) (make-diff 3 8))) (list '+ (list '* (list '/ 3 8) 8) (list '- 3 8)))
+
+;; Template instantiation:
+#|
+(define (to-list exp)
+  (cond
+    [(number? exp) ...]
+    [(sum? exp) (... '+ (... (sum-left exp) ...) (... (sum-right exp) ...) ...)]
+    [(prod? exp) (... '* (... (prod-left exp) ...) (... (prod-right exp) ...) ...)]
+    [(diff? exp) (... '- (... (diff-left exp) ...) (... (diff-right exp) ...) ...)]
+    [(quot? exp) (... '/ (... (quot-left exp) ...) (... (quot-right exp) ...) ...)]
+    [else exp]
+    )
+  )
+|#
+
+
+;; Code:
+(define (to-list exp)
+  (cond
+    [(number? exp) exp]
+    [(sum? exp) (list '+ (to-list (sum-left exp)) (to-list (sum-right exp)))]
+    [(prod? exp) (list '* (to-list (prod-left exp)) (to-list (prod-right exp)))]
+    [(diff? exp) (list '- (to-list (diff-left exp)) (to-list (diff-right exp)))]
+    [(quot? exp) (list '/ (to-list (quot-left exp)) (to-list (quot-right exp)))]
+    [else exp]
+    )
+  )
+
+
+;; Tests:
+(check-expect (to-list 0) 0)
+(check-expect (to-list 1) 1)
+(check-expect (to-list 12) 12)
+(check-expect (to-list (make-sum 3 8)) (list '+ 3 8))
+(check-expect (to-list (make-prod 3 8)) (list '* 3 8))
+(check-expect (to-list (make-diff 3 8)) (list '- 3 8))
+(check-expect (to-list (make-quot 3 8)) (list '/ 3 8))
+(check-expect (to-list (make-sum (make-prod 4 7) 25)) (list '+ (list '* 4 7) 25))
+(check-expect (to-list (make-quot (make-diff 4 7) 25)) (list '/ (list '- 4 7) 25))
+(check-expect (to-list (make-sum (make-prod (make-quot 3 8) 8) (make-diff 3 8))) (list '+ (list '* (list '/ 3 8) 8) (list '- 3 8)))
+
+
+
+;; eval: ArithExpr -> number
+;; Contract: (eval E) evaluates an ArithExpr. It internally utilizes the to-list function to convert the ArithExpr to the appropriate and and uses the list to evaluate the expression.
+
+
+;; Examples:
+;; (check-expect (eval 0) 0)
+;; (check-expect (eval 1) 1)
+;; (check-expect (eval 12) 12)
+;; (check-expect (eval (make-sum 3 8)) 11)
+;; (check-expect (eval (make-prod 3 8)) 24)
+;; (check-expect (eval (make-diff 3 8)) -5)
+;; (check-expect (eval (make-quot 8 4)) 2)
+;; (check-expect (eval (make-sum (make-prod 4 7) 25)) 53)
+;; (check-expect (eval (make-quot (make-diff 4 7) 3)) -1)
+;; (check-expect (eval (make-sum (make-prod (make-quot 3 3) 8) (make-diff 3 8))) 3)
+
+;; Template instantiation:
+#|
+(define (eval E)
+  
+  (local ((define exp (to-list E)))
+  
+  (cond
+    [(number? exp) ...]
+    [(equal? (first exp) '+) (+ ... (second exp) ... (third exp) ...)]
+    [(equal? (first exp) '-) (- ... (second exp) ... (third exp) ...)]
+    [(equal? (first exp) '*) (* ... (second exp) ... (third exp) ...)]
+    [(equal? (first exp) '/) (/ ... (second exp) ... (third exp) ...)]
+    [else (error ...)]
+    )
+  )
+  )
+|#
+
+;; Code:
+(define (eval E)
+  
+  (local ((define exp (to-list E)))
+  
+  (cond
+    [(number? exp) exp]
+    [(equal? (first exp) '+) (+ (eval (second exp)) (eval (third exp)))]
+    [(equal? (first exp) '-) (- (eval (second exp)) (eval (third exp)))]
+    [(equal? (first exp) '*) (* (eval (second exp)) (eval (third exp)))]
+    [(equal? (first exp) '/) (/ (eval (second exp)) (eval (third exp)))]
+    [else (error "unsupported expression")]
+    )
+  )
+  )
+
+;; Tests:
+(check-error (eval (list )))
+(check-error (eval 'a))
+
+(check-expect (eval 0) 0)
+(check-expect (eval 1) 1)
+(check-expect (eval 12) 12)
+(check-expect (eval (make-sum 3 8)) 11)
+(check-expect (eval (make-prod 3 8)) 24)
+(check-expect (eval (make-diff 3 8)) -5)
+(check-expect (eval (make-quot 8 4)) 2)
+(check-expect (eval (make-sum (make-prod 4 7) 25)) 53)
+(check-expect (eval (make-quot (make-diff 4 7) 3)) -1)
+(check-expect (eval (make-sum (make-prod (make-quot 3 3) 8) (make-diff 3 8))) 3)
+
